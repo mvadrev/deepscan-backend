@@ -37,11 +37,14 @@ def upload():
     if img is None:
         return jsonify({"error": "Invalid image data"}), 400
 
+    # Resize to reduce memory usage
+    img = cv2.resize(img, (640, 640))
+
     # -------------------------------
-    # Run YOLO inference
+    # Run YOLO inference (no fusion)
     # -------------------------------
     try:
-        results = model.predict(img, verbose=False)
+        results = model.predict(img, verbose=False, fuse=False)
     except Exception as e:
         return jsonify({"error": f"Inference failed: {str(e)}"}), 500
 
@@ -65,5 +68,4 @@ def upload():
 
 
 if __name__ == "__main__":
-    # Flask debug mode (for local dev only)
     app.run(host="0.0.0.0", port=5000, debug=False)
