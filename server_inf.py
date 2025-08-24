@@ -41,10 +41,10 @@ def upload():
     img = cv2.resize(img, (640, 640))
 
     # -------------------------------
-    # Run YOLO inference (no fusion)
+    # Run YOLO inference (no fuse argument)
     # -------------------------------
     try:
-        results = model.predict(img, verbose=False, fuse=False)
+        results = model.predict(img, verbose=False)
     except Exception as e:
         return jsonify({"error": f"Inference failed: {str(e)}"}), 500
 
