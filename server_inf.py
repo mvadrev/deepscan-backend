@@ -3,34 +3,67 @@ from ultralytics import YOLO
 import cv2
 import numpy as np
 
-# Load your YOLO model (adjust path if needed)
-model = YOLO("./best.pt")  # replace with your trained model path
+# -------------------------------
+# Load YOLO model ONCE at startup
+# -------------------------------
+try:
+    model = YOLO("./best.pt")  # replace with your trained weights
+    print("✅ YOLO model loaded successfully")
+except Exception as e:
+    print(f"❌ Failed to load YOLO model: {e}")
+    model = None
 
 app = Flask(__name__)
 
 @app.route("/upload", methods=["POST"])
 def upload():
-    # Get raw JPEG bytes from ESP32
+    if model is None:
+        return jsonify({"error": "Model not loaded on server"}), 500
+
+    # -------------------------------
+    # Validate input
+    # -------------------------------
     img_data = request.data
     if not img_data:
         return jsonify({"error": "No data received"}), 400
 
-    # Convert bytes to numpy array
-    nparr = np.frombuffer(img_data, np.uint8)
-    img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+    # Convert raw bytes to image
+    try:
+        nparr = np.frombuffer(img_data, np.uint8)
+        img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+    except Exception:
+        return jsonify({"error": "Failed to decode image"}), 400
+
     if img is None:
         return jsonify({"error": "Invalid image data"}), 400
 
+    # -------------------------------
     # Run YOLO inference
-    results = model.predict(img, verbose=False)  # verbose=False to suppress print
+    # -------------------------------
+    try:
+        results = model.predict(img, verbose=False)
+    except Exception as e:
+        return jsonify({"error": f"Inference failed: {str(e)}"}), 500
 
-    # Count number of pills detected
-    count = 0
-    for result in results:
-        count += len(result.boxes)  # each box is a detected object
+    # -------------------------------
+    # Count pills
+    # -------------------------------
+    count = sum(len(r.boxes) for r in results)
+    print(f"📦 Pills detected: {count}")
 
-    print(f"Pills detected: {count}")
-    return jsonify({"pill_count": count}), 200
+    return jsonify({
+        "pill_count": int(count),
+        "detections": [
+            {
+                "class": int(box.cls[0]),
+                "confidence": float(box.conf[0])
+            }
+            for r in results
+            for box in r.boxes
+        ]
+    }), 200
+
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+    # Flask debug mode (for local dev only)
+    app.run(host="0.0.0.0", port=5000, debug=False)
