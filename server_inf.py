@@ -15,6 +15,13 @@ except Exception as e:
 
 app = Flask(__name__)
 
+# -------------------------------
+# Hello / Health-check route
+# -------------------------------
+@app.route("/", methods=["GET"])
+def home():
+    return "Server running ✅", 200
+
 @app.route("/upload", methods=["POST"])
 def upload():
     if model is None:
@@ -41,7 +48,7 @@ def upload():
     img = cv2.resize(img, (640, 640))
 
     # -------------------------------
-    # Run YOLO inference (no fuse argument)
+    # Run YOLO inference
     # -------------------------------
     try:
         results = model.predict(img, verbose=False)
